@@ -9,7 +9,7 @@ At this point the program can run the IBM Logo program. Drawing on the screen wo
 ## User instructions
 ### Windows
 - Download the latest Emul-8.exe from releases
-- Make sure SDL2.dll exists in the same folder as the .exe (or in your PATH, if you prefer)
+- Make sure 32-bit SDL2.dll exists in the same folder as the .exe (SDL2.dll be found [here](https://www.libsdl.org/download-2.0.php) under "Runtime Binaries")
 - Run the program from the command line, with a Chip-8 binary file's name as an argument
 - When you're done, close the window and the program will exit
 
