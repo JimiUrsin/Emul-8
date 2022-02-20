@@ -28,6 +28,8 @@ SET(SOURCES
 add_executable(Emul-8 ${SOURCES})
 target_compile_options(Emul-8 PRIVATE -Wall -Wextra)
 
+target_link_libraries(Emul-8 -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic)
+
 set(SDL2_DIR ${CMAKE_CURRENT_LIST_DIR}/external/SDL2/lib/cmake/SDL2)
 find_package(SDL2 REQUIRED)
 
