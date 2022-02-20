@@ -1,4 +1,7 @@
-#include <iostream>
-
-#include <SFML/Window.hpp>
-#include <SFML/Graphics.hpp>
+#include <stack>
+#include <vector>
+#include <fstream>
+#include <string>
+#include <iomanip>
+#include <chrono>
+#include <thread>
