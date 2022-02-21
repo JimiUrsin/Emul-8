@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
         filename.assign(argv[1]);
     } else {
         std::cout << "Enter filename: ";
-        std::cin >> filename;
+        std::getline(std::cin, filename);
     }
 
     Chip8 chip8;
