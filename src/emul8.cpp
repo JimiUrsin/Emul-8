@@ -57,7 +57,7 @@ class Chip8 {
     Chip8() = default;
     Display display;
 
-    void load_code(const std::string filename) {
+    void load_code(const std::string& filename) {
         std::ifstream input_file(filename, std::ios::binary | std::ios::ate);
 
         auto filesize = input_file.tellg();
@@ -83,91 +83,7 @@ class Chip8 {
 
             std::cout << std::hex << std::setfill('0') << std::setw(4) << instruction << ": ";
 
-            switch ((instruction & 0xF000) >> 12) {
-                case 0: {
-                    if (instruction == 0x00E0) {
-                        std::cout << "Cleared screen\n";
-                        display.clear();
-                    } else if (instruction == 0x00EE) {
-                        std::cout << "Returning from subroutine\n";
-                        cpu.pc = cpu.stack.top();
-                        cpu.stack.pop();
-                    }
-                } break;
-                case 1: {
-                    uint16_t address = instruction & 0x0FFF;
-                    std::cout << "Jumping to " << std::hex << address << "\n";
-                    cpu.pc = address;
-                } break;
-                case 2: {
-                    uint16_t address = instruction & 0x0FFF;
-                    std::cout << "Subroutine call, jumping to " << std::hex << address << "\n";
-                    cpu.stack.push(cpu.pc);
-                    cpu.pc = address;
-                } break;
-                case 3: {
-                    size_t reg = (instruction & 0x0F00) >> 8;
-                    if (cpu.registers[reg] == (instruction & 0x00FF)) {
-                        std::cout << "Value of V" << reg << " was " << (instruction & 0x00FF) << ", skipping next instruction\n";
-                        cpu.pc += 2;
-                    } else {
-                        std::cout << "Value of V" << reg << " was not " << (instruction & 0x00FF) << ", not skipping\n";
-                    }
-                } break;
-                case 4: {
-                    size_t reg = (instruction & 0x0F00) >> 8;
-
-                    if (cpu.registers[reg] != (instruction & 0x00FF)) {
-                        std::cout << "Value of V" << reg << " was not " << (instruction & 0x00FF) << ", skipping next instruction\n";
-                        cpu.pc += 2;
-                    } else {
-                        std::cout << "Value of V" << reg << " was " << (instruction & 0x00FF) << ", not skipping\n";
-                    }
-                } break;
-                case 6: {
-                    const uint16_t reg = (instruction & 0x0F00) >> 8;
-                    const uint8_t value = instruction & 0x00FF;
-                    std::cout << "Setting register V" << reg << " to value " << (uint16_t) value << "\n";
-                    cpu.registers[reg] = value;
-                } break;
-                case 7: {
-                    uint16_t reg = (instruction & 0x0F00) >> 8;
-                    uint8_t value = instruction & 0x00FF;
-                    std::cout << "Adding " << (uint16_t) value << " to register V" << reg << "\n";
-                    cpu.registers[reg] += value;
-                } break;
-                case 0xA: {
-                    uint16_t value = instruction & 0x0FFF;
-                    std::cout << "Setting index register to " << value << "\n";
-                    cpu.i = value;
-                } break;
-                case 0xD: {
-                    const uint8_t x_register = (instruction & 0x0F00) >> 8;
-                    const uint8_t y_register = (instruction & 0x00F0) >> 4;
-                    uint8_t bytes = instruction & 0x000F;
-
-                    const uint8_t& x = cpu.registers[x_register];
-                    const uint8_t& y = cpu.registers[y_register];
-                    std::cout << "Drawing to (" << (int) x << ", " << (int) y << ")\n";
-
-                    uint8_t* pixel_data = build_sprite(bytes);
-
-                    display.draw_sprite(bytes, pixel_data, x, y);
-                } break;
-                case 0xF: {
-                    switch(instruction & 0x00FF) {
-                        case 0x1E: {
-                            const size_t reg = (instruction & 0x0F00) >> 8;
-                            std::cout << "Adding the value of V" << reg << " to I\n";
-                            cpu.i += cpu.registers[reg];
-                        } break;
-                        default:
-                            std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
-                    }
-                } break;
-                default:
-                    std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
-            }
+            execute(instruction);
 
             if (display.handle_events())
                 break;
@@ -175,18 +91,108 @@ class Chip8 {
             std::this_thread::sleep_for(std::chrono::milliseconds(1000 / cpu.IPS) - (timer.now() - start));
         }
     }
+
+    void execute(const uint16_t& instruction) {
+        switch ((instruction & 0xF000) >> 12) {
+            case 0: {
+                if (instruction == 0x00E0) {
+                    std::cout << "Cleared screen\n";
+                    display.clear();
+                } else if (instruction == 0x00EE) {
+                    std::cout << "Returning from subroutine\n";
+                    cpu.pc = cpu.stack.top();
+                    cpu.stack.pop();
+                }
+            } break;
+            case 1: {
+                const uint16_t address = instruction & 0x0FFF;
+                std::cout << "Jumping to " << std::hex << address << "\n";
+                cpu.pc = address;
+            } break;
+            case 2: {
+                const uint16_t address = instruction & 0x0FFF;
+                std::cout << "Subroutine call, jumping to " << std::hex << address << "\n";
+                cpu.stack.push(cpu.pc);
+                cpu.pc = address;
+            } break;
+            case 3: {
+                const size_t reg = (instruction & 0x0F00) >> 8;
+                if (cpu.registers[reg] == (instruction & 0x00FF)) {
+                    std::cout << "Value of V" << reg << " was " << (instruction & 0x00FF) << ", skipping next instruction\n";
+                    cpu.pc += 2;
+                } else {
+                    std::cout << "Value of V" << reg << " was not " << (instruction & 0x00FF) << ", not skipping\n";
+                }
+            } break;
+            case 4: {
+                const size_t reg = (instruction & 0x0F00) >> 8;
+
+                if (cpu.registers[reg] != (instruction & 0x00FF)) {
+                    std::cout << "Value of V" << reg << " was not " << (instruction & 0x00FF) << ", skipping next instruction\n";
+                    cpu.pc += 2;
+                } else {
+                    std::cout << "Value of V" << reg << " was " << (instruction & 0x00FF) << ", not skipping\n";
+                }
+            } break;
+            case 6: {
+                const uint16_t reg = (instruction & 0x0F00) >> 8;
+                const uint8_t value = instruction & 0x00FF;
+                std::cout << "Setting register V" << reg << " to value " << (uint16_t) value << "\n";
+                cpu.registers[reg] = value;
+            } break;
+            case 7: {
+                const uint16_t reg = (instruction & 0x0F00) >> 8;
+                const uint8_t value = instruction & 0x00FF;
+                std::cout << "Adding " << (uint16_t) value << " to register V" << reg << "\n";
+                cpu.registers[reg] += value;
+            } break;
+            case 0xA: {
+                const uint16_t value = instruction & 0x0FFF;
+                std::cout << "Setting index register to " << value << "\n";
+                cpu.i = value;
+            } break;
+            case 0xD: {
+                const uint8_t x_register = (instruction & 0x0F00) >> 8;
+                const uint8_t y_register = (instruction & 0x00F0) >> 4;
+                const uint8_t bytes = instruction & 0x000F;
+
+                const uint8_t& x = cpu.registers[x_register];
+                const uint8_t& y = cpu.registers[y_register];
+                std::cout << "Drawing to (" << (int) x << ", " << (int) y << ")\n";
+
+                uint8_t* pixel_data = build_sprite(bytes);
+
+                display.draw_sprite(bytes, pixel_data, x, y);
+            } break;
+            case 0xF: {
+                switch(instruction & 0x00FF) {
+                    case 0x1E: {
+                        const size_t reg = (instruction & 0x0F00) >> 8;
+                        std::cout << "Adding the value of V" << reg << " to I\n";
+                        cpu.i += cpu.registers[reg];
+                    } break;
+                    default:
+                        std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
+                }
+            } break;
+            default:
+                std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
+        }
+    }
 };
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
+    std::string filename;
     if (argc == 2) {
         std::cout << "Loading file " << argv[1] << "...\n";
+        filename.assign(argv[1]);
     } else {
-        std::cout << "Usage: ./Emul-8(.exe) <filename>\n";
-        return 0;
+        std::cout << "Enter filename: ";
+        std::cin >> filename;
     }
 
     Chip8 chip8;
-    chip8.load_code(argv[1]);
+    chip8.load_code(filename);
 
     chip8.run();
     return 0;
