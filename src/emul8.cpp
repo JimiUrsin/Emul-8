@@ -10,6 +10,7 @@ struct CPU {
     uint8_t delay_timer;
     uint8_t sound_timer;
     uint8_t registers[16];
+    const uint16_t IPS = 20;
 };
 
 template<typename T>
@@ -80,17 +81,48 @@ class Chip8 {
             uint16_t instruction = fetch(cpu.pc);
             cpu.pc += 2;
 
+            std::cout << std::hex << std::setfill('0') << std::setw(4) << instruction << ": ";
+
             switch ((instruction & 0xF000) >> 12) {
                 case 0: {
                     if (instruction == 0x00E0) {
                         std::cout << "Cleared screen\n";
                         display.clear();
+                    } else if (instruction == 0x00EE) {
+                        std::cout << "Returning from subroutine\n";
+                        cpu.pc = cpu.stack.top();
+                        cpu.stack.pop();
                     }
                 } break;
                 case 1: {
                     uint16_t address = instruction & 0x0FFF;
                     std::cout << "Jumping to " << std::hex << address << "\n";
                     cpu.pc = address;
+                } break;
+                case 2: {
+                    uint16_t address = instruction & 0x0FFF;
+                    std::cout << "Subroutine call, jumping to " << std::hex << address << "\n";
+                    cpu.stack.push(cpu.pc);
+                    cpu.pc = address;
+                } break;
+                case 3: {
+                    size_t reg = (instruction & 0x0F00) >> 8;
+                    if (cpu.registers[reg] == (instruction & 0x00FF)) {
+                        std::cout << "Value of V" << reg << " was " << (instruction & 0x00FF) << ", skipping next instruction\n";
+                        cpu.pc += 2;
+                    } else {
+                        std::cout << "Value of V" << reg << " was not " << (instruction & 0x00FF) << ", not skipping\n";
+                    }
+                } break;
+                case 4: {
+                    size_t reg = (instruction & 0x0F00) >> 8;
+
+                    if (cpu.registers[reg] != (instruction & 0x00FF)) {
+                        std::cout << "Value of V" << reg << " was not " << (instruction & 0x00FF) << ", skipping next instruction\n";
+                        cpu.pc += 2;
+                    } else {
+                        std::cout << "Value of V" << reg << " was " << (instruction & 0x00FF) << ", not skipping\n";
+                    }
                 } break;
                 case 6: {
                     const uint16_t reg = (instruction & 0x0F00) >> 8;
@@ -122,6 +154,17 @@ class Chip8 {
 
                     display.draw_sprite(bytes, pixel_data, x, y);
                 } break;
+                case 0xF: {
+                    switch(instruction & 0x00FF) {
+                        case 0x1E: {
+                            const size_t reg = (instruction & 0x0F00) >> 8;
+                            std::cout << "Adding the value of V" << reg << " to I\n";
+                            cpu.i += cpu.registers[reg];
+                        } break;
+                        default:
+                            std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
+                    }
+                } break;
                 default:
                     std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
             }
@@ -129,11 +172,7 @@ class Chip8 {
             if (display.handle_events())
                 break;
 
-            std::cout << "\n";
-
-            // TODO Change this into a variable calculated from a given instructions per second value
-            // If processing the current instruction hasn't taken  ↓  that many milliseconds, sleep until that point
-            std::this_thread::sleep_for(std::chrono::milliseconds(200) - (timer.now() - start));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / cpu.IPS) - (timer.now() - start));
         }
     }
 };

@@ -30,6 +30,7 @@ class Display {
     void clear() {
         SDL_SetRenderDrawColor(renderer, BLACK.r, BLACK.g, BLACK.b, BLACK.a);
         SDL_RenderClear(renderer);
+        SDL_SetRenderDrawColor(renderer, WHITE.r, WHITE.g, WHITE.b, WHITE.a);
     }
 
     void render() {
