@@ -3,7 +3,26 @@
 #include "common.hpp"
 
 struct CPU {
-    uint8_t ram[4096];
+    // 0 through F
+    uint8_t ram[4096] = {
+        0xF0, 0x90, 0x90, 0x90, 0xF0,
+        0x20, 0x60, 0x20, 0x20, 0x70,
+        0xF0, 0x10, 0xF0, 0x80, 0xF0,
+        0xF0, 0x10, 0xF0, 0x10, 0xF0,
+        0x90, 0x90, 0xF0, 0x10, 0x10,
+        0xF0, 0x80, 0xF0, 0x10, 0xF0,
+        0xF0, 0x80, 0xF0, 0x90, 0xF0,
+        0xF0, 0x10, 0x20, 0x40, 0x40,
+        0xF0, 0x90, 0xF0, 0x90, 0xF0,
+        0xF0, 0x90, 0xF0, 0x10, 0xF0,
+        0xF0, 0x90, 0xF0, 0x90, 0x90,
+        0xE0, 0x90, 0xE0, 0x90, 0xE0,
+        0xF0, 0x80, 0x80, 0x80, 0xF0,
+        0xE0, 0x90, 0x90, 0x90, 0xE0,
+        0xF0, 0x80, 0xF0, 0x80, 0xF0,
+        0xF0, 0x80, 0xF0, 0x80, 0x80
+    };
+
     uint16_t pc;
     uint16_t i = 0;
     std::stack<uint16_t> stack;
@@ -165,11 +184,30 @@ class Chip8 {
                 display.draw_sprite(bytes, pixel_data, x, y);
             } break;
             case 0xF: {
+                // Used as the target register in all commands except 0xFX29.
+                const size_t reg = (instruction & 0x0F00) >> 8;
+
                 switch(instruction & 0x00FF) {
                     case 0x1E: {
-                        const size_t reg = (instruction & 0x0F00) >> 8;
                         std::cout << "Adding the value of V" << reg << " to I\n";
                         cpu.i += cpu.registers[reg];
+                    } break;
+                    case 0x29: {
+                        std::cout << "Setting I to the address of digit " << reg << "\n";
+                        cpu.i = reg * 5;
+                    } break;
+                    case 0x33: {
+                        cpu.ram[cpu.i] = cpu.registers[reg] / 100;
+                        cpu.ram[cpu.i + 1] = cpu.registers[reg] % 100 / 10;
+                        cpu.ram[cpu.i + 2] = cpu.registers[reg] % 10;
+
+                        std::cout << "Writing the decimal representation of V" << reg << " to " << cpu.i << "\n";
+                    } break;
+                    case 0x65: {
+                        std::cout << "Filling registers from memory up to V" << reg << "\n";
+                        for (size_t n = 0; n <= reg; ++n) {
+                            cpu.registers[n] = cpu.ram[cpu.i + n];
+                        }
                     } break;
                     default:
                         std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
