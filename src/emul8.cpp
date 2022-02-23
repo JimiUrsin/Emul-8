@@ -42,7 +42,7 @@ class Chip8 {
 
     // We could also just use a reference to the 8-bit parts but meh,
     // CPU time is not an issue
-    const uint16_t fetch(const uint16_t& pc) const {
+    uint16_t fetch(const uint16_t& pc) const {
         return (cpu.ram[pc] << 8) | cpu.ram[pc + 1];
     }
 
@@ -95,9 +95,11 @@ class Chip8 {
 
         display.create_window();
 
+        auto next = timer.now();
+        auto delay = std::chrono::milliseconds(1000 / cpu.IPS);
         while(true) {
-            auto start = timer.now();
-            uint16_t instruction = fetch(cpu.pc);
+            next += delay;
+            const uint16_t instruction = fetch(cpu.pc);
             cpu.pc += 2;
 
             std::cout << std::hex << std::setfill('0') << std::setw(4) << instruction << ": ";
@@ -107,7 +109,7 @@ class Chip8 {
             if (display.handle_events())
                 break;
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / cpu.IPS) - (timer.now() - start));
+            std::this_thread::sleep_until(next);
         }
     }
 
