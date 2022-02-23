@@ -56,6 +56,12 @@ class Display {
         SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STATIC, 8, height);
         SDL_UpdateTexture(texture, NULL, pixel_data, 4 * 8);
         SDL_RenderCopy(renderer, texture, NULL, sprite_rect);
+
+        // Clean up
+        delete[] pixel_data;
+        delete sprite_rect;
+        SDL_DestroyTexture(texture);
+
         render();
     }
 };
