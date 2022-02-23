@@ -42,11 +42,11 @@ class Chip8 {
 
     // We could also just use a reference to the 8-bit parts but meh,
     // CPU time is not an issue
-    uint16_t fetch(const uint16_t& pc) const {
+    const uint16_t fetch(const uint16_t& pc) const {
         return (cpu.ram[pc] << 8) | cpu.ram[pc + 1];
     }
 
-    uint8_t* build_sprite(const uint8_t& height) {
+    const uint8_t* build_sprite(const uint8_t& height) {
         // Height * 8 gives us the amount of pixels, 4 bytes for all RGBA values of each pixel
         size_t size = 8 * 4 * height;
         uint8_t* pixels = new uint8_t[size];
@@ -123,17 +123,20 @@ class Chip8 {
                     cpu.stack.pop();
                 }
             } break;
+
             case 1: {
                 const uint16_t address = instruction & 0x0FFF;
                 std::cout << "Jumping to " << std::hex << address << "\n";
                 cpu.pc = address;
             } break;
+
             case 2: {
                 const uint16_t address = instruction & 0x0FFF;
                 std::cout << "Subroutine call, jumping to " << std::hex << address << "\n";
                 cpu.stack.push(cpu.pc);
                 cpu.pc = address;
             } break;
+
             case 3: {
                 const size_t reg = (instruction & 0x0F00) >> 8;
                 if (cpu.registers[reg] == (instruction & 0x00FF)) {
@@ -143,6 +146,7 @@ class Chip8 {
                     std::cout << "Value of V" << reg << " was not " << (instruction & 0x00FF) << ", not skipping\n";
                 }
             } break;
+
             case 4: {
                 const size_t reg = (instruction & 0x0F00) >> 8;
 
@@ -153,23 +157,27 @@ class Chip8 {
                     std::cout << "Value of V" << reg << " was " << (instruction & 0x00FF) << ", not skipping\n";
                 }
             } break;
+
             case 6: {
                 const uint16_t reg = (instruction & 0x0F00) >> 8;
                 const uint8_t value = instruction & 0x00FF;
                 std::cout << "Setting register V" << reg << " to value " << (uint16_t) value << "\n";
                 cpu.registers[reg] = value;
             } break;
+
             case 7: {
                 const uint16_t reg = (instruction & 0x0F00) >> 8;
                 const uint8_t value = instruction & 0x00FF;
                 std::cout << "Adding " << (uint16_t) value << " to register V" << reg << "\n";
                 cpu.registers[reg] += value;
             } break;
+
             case 0xA: {
                 const uint16_t value = instruction & 0x0FFF;
                 std::cout << "Setting index register to " << value << "\n";
                 cpu.i = value;
             } break;
+
             case 0xD: {
                 const uint8_t x_register = (instruction & 0x0F00) >> 8;
                 const uint8_t y_register = (instruction & 0x00F0) >> 4;
@@ -179,12 +187,14 @@ class Chip8 {
                 const uint8_t& y = cpu.registers[y_register];
                 std::cout << "Drawing to (" << (int) x << ", " << (int) y << ")\n";
 
-                uint8_t* pixel_data = build_sprite(bytes);
+                const uint8_t* pixel_data = build_sprite(bytes);
 
                 display.draw_sprite(bytes, pixel_data, x, y);
             } break;
+
             case 0xF: {
-                // Used as the target register in all commands except 0xFX29.
+                // Used as the target register in all commands except 0xFX29,
+                // where it's an index for a character
                 const size_t reg = (instruction & 0x0F00) >> 8;
 
                 switch(instruction & 0x00FF) {
@@ -192,10 +202,12 @@ class Chip8 {
                         std::cout << "Adding the value of V" << reg << " to I\n";
                         cpu.i += cpu.registers[reg];
                     } break;
+
                     case 0x29: {
                         std::cout << "Setting I to the address of digit " << reg << "\n";
                         cpu.i = reg * 5;
                     } break;
+
                     case 0x33: {
                         cpu.ram[cpu.i] = cpu.registers[reg] / 100;
                         cpu.ram[cpu.i + 1] = cpu.registers[reg] % 100 / 10;
@@ -203,16 +215,19 @@ class Chip8 {
 
                         std::cout << "Writing the decimal representation of V" << reg << " to " << cpu.i << "\n";
                     } break;
+
                     case 0x65: {
                         std::cout << "Filling registers from memory up to V" << reg << "\n";
                         for (size_t n = 0; n <= reg; ++n) {
                             cpu.registers[n] = cpu.ram[cpu.i + n];
                         }
                     } break;
+
                     default:
                         std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
                 }
             } break;
+
             default:
                 std::cout << "Instruction " << std::hex << instruction << " has not been implemented yet\n";
         }
@@ -228,6 +243,8 @@ int main(int argc, char* argv[]) {
         std::cout << "Enter filename: ";
         std::getline(std::cin, filename);
     }
+
+    std::cout << "\n\n";
 
     Chip8 chip8;
     chip8.load_code(filename);
