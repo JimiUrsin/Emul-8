@@ -93,7 +93,11 @@ class Chip8 {
 
         std::chrono::high_resolution_clock timer;
 
-        display.create_window();
+        if (!display.create_window()) {
+            std::cout << "Failed to initialize the SDL window, exiting...\n";
+            exit(0);
+        }
+        
 
         auto next = timer.now();
         auto delay = std::chrono::milliseconds(1000 / cpu.IPS);

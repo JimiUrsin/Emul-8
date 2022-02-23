@@ -11,12 +11,14 @@ class Display {
     const SDL_Color WHITE {0xFF, 0xFF, 0xFF, 0xFF};
     const SDL_Color BLACK {0x00, 0x00, 0x00, 0xFF};
 
+    void render() {
+        SDL_RenderPresent(renderer);
+    }
+
     public:
-    void create_window() {
-        if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS) < 0) {
-            std::cerr << "Failed to initialize SDL, exiting...";
-            exit(-1);
-        }
+    bool create_window() {
+        if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS) < 0)
+            return false;
 
         window = SDL_CreateWindow("Emul-8", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 320, SDL_WINDOW_ALWAYS_ON_TOP);
 
@@ -25,16 +27,14 @@ class Display {
         SDL_SetRenderDrawColor(renderer, WHITE.r, WHITE.g, WHITE.b, WHITE.a);
         SDL_RenderSetScale(renderer, scale, scale);
         render();
+
+        return true;
     }
 
     void clear() {
         SDL_SetRenderDrawColor(renderer, BLACK.r, BLACK.g, BLACK.b, BLACK.a);
         SDL_RenderClear(renderer);
         SDL_SetRenderDrawColor(renderer, WHITE.r, WHITE.g, WHITE.b, WHITE.a);
-    }
-
-    void render() {
-        SDL_RenderPresent(renderer);
     }
 
     int handle_events() {
