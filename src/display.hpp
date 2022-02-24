@@ -11,6 +11,7 @@ class Display {
     const SDL_Color WHITE {0xFF, 0xFF, 0xFF, 0xFF};
     const SDL_Color BLACK {0x00, 0x00, 0x00, 0xFF};
     uint32_t vram[32][64];
+    const uint8_t* keyboard_state = SDL_GetKeyboardState(nullptr);
 
     std::unordered_map<uint8_t, SDL_Scancode> key_map {
         {0x1, SDL_SCANCODE_1}, {0x2, SDL_SCANCODE_2}, {0x3, SDL_SCANCODE_3}, {0xC, SDL_SCANCODE_4},
@@ -86,8 +87,8 @@ class Display {
     }
 
     bool get_key(const uint8_t& key) {
-        const uint8_t* keyboard_state = SDL_GetKeyboardState(nullptr);
-        const auto& scancode = key_map.at(key);
+        SDL_PumpEvents();
+        const SDL_Scancode& scancode = key_map.at(key);
         return keyboard_state[scancode] == 1;
     }
 
