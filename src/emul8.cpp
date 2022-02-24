@@ -26,16 +26,11 @@ struct CPU {
     uint16_t pc;
     uint16_t i = 0;
     std::stack<uint16_t> stack;
-    uint8_t delay_timer;
-    uint8_t sound_timer;
+    uint8_t delay_timer = 0;
+    uint8_t sound_timer = 0;
     uint8_t registers[16];
-    const uint16_t IPS = 20;
+    const uint16_t IPS = 60;
 };
-
-template<typename T>
-const T get_bit(const T& number, const uint8_t& nth) {
-    return (number & (1 << nth)) >> nth;
-}
 
 class Chip8 {
     CPU cpu;
@@ -44,32 +39,6 @@ class Chip8 {
     // CPU time is not an issue
     uint16_t fetch(const uint16_t& pc) const {
         return (cpu.ram[pc] << 8) | cpu.ram[pc + 1];
-    }
-
-    const uint8_t* build_sprite(const uint8_t& height) {
-        // Height * 8 gives us the amount of pixels, 4 bytes for all RGBA values of each pixel
-        size_t size = 8 * 4 * height;
-        uint8_t* pixels = new uint8_t[size];
-
-        for(uint8_t offset = 0; offset < height; ++offset) {
-            const uint8_t& bits = cpu.ram[cpu.i + offset];
-
-            // RGBA8888 format
-            for(uint8_t nth = 0; nth < 8; ++nth) {
-                const uint8_t nth_bit = get_bit(bits, 7 - nth);
-
-                const size_t mem_pos = offset * 32 + nth * 4;
-
-                pixels[mem_pos] = 255;
-
-                // TODO User-defined colors
-                pixels[mem_pos + 1] = 255 * nth_bit;
-                pixels[mem_pos + 2] = 255 * nth_bit;
-                pixels[mem_pos + 3] = 255 * nth_bit;
-            }
-        }
-
-        return pixels;
     }
 
     public:
@@ -98,11 +67,14 @@ class Chip8 {
             exit(0);
         }
         
+        auto next_instruction = timer.now();
+        auto instruction_delay = std::chrono::milliseconds(1000 / cpu.IPS);
 
-        auto next = timer.now();
-        auto delay = std::chrono::milliseconds(1000 / cpu.IPS);
+        auto timer_delay = std::chrono::milliseconds(1000 / 60);
+        auto next_timer = timer.now() + timer_delay;
+
         while(true) {
-            next += delay;
+            next_instruction += instruction_delay;
             const uint16_t instruction = fetch(cpu.pc);
             cpu.pc += 2;
 
@@ -110,10 +82,17 @@ class Chip8 {
 
             execute(instruction);
 
+            if (next_timer < timer.now()) {
+                cpu.delay_timer -= (cpu.delay_timer > 0);
+                cpu.sound_timer -= (cpu.sound_timer > 0);
+
+                next_timer += timer_delay;
+            }
+
             if (display.handle_events())
                 break;
 
-            std::this_thread::sleep_until(next);
+            std::this_thread::sleep_until(next_instruction);
         }
     }
 
@@ -184,18 +163,25 @@ class Chip8 {
                 cpu.i = value;
             } break;
 
+            case 0xC: {
+                const size_t reg = (instruction & 0x0F00) >> 8;
+                const uint8_t kk = instruction & 0x00FF;
+
+                cpu.registers[reg] = (rand() % 256) & kk;
+            } break;
+
             case 0xD: {
                 const uint8_t x_register = (instruction & 0x0F00) >> 8;
                 const uint8_t y_register = (instruction & 0x00F0) >> 4;
-                const uint8_t bytes = instruction & 0x000F;
+                const uint8_t height = instruction & 0x000F;
 
                 const uint8_t& x = cpu.registers[x_register];
                 const uint8_t& y = cpu.registers[y_register];
                 std::cout << "Drawing to (" << (int) x << ", " << (int) y << ")\n";
 
-                const uint8_t* pixel_data = build_sprite(bytes);
-
-                display.draw_sprite(bytes, pixel_data, x, y);
+                const bool collision = display.draw_sprite(height, &cpu.ram[cpu.i], x, y);
+                if (collision)
+                    cpu.registers[0xF] = 1;
             } break;
 
             case 0xF: {
@@ -204,6 +190,16 @@ class Chip8 {
                 const size_t reg = (instruction & 0x0F00) >> 8;
 
                 switch(instruction & 0x00FF) {
+                    case 0x07: {
+                        std::cout << "Setting V" << reg << " to the delay timer value\n";
+                        cpu.registers[reg] = cpu.delay_timer;
+                    } break;
+
+                    case 0x15: {
+                        std::cout << "Setting the delay timer to the value of V" << reg << "\n";
+                        cpu.delay_timer = cpu.registers[reg];
+                    } break;
+
                     case 0x1E: {
                         std::cout << "Adding the value of V" << reg << " to I\n";
                         cpu.i += cpu.registers[reg];
