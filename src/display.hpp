@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include <SDL.h>
+#include <unordered_map>
 
 class Display {
     static constexpr float SCALE = 10;
@@ -9,8 +10,14 @@ class Display {
     SDL_Renderer* renderer;
     const SDL_Color WHITE {0xFF, 0xFF, 0xFF, 0xFF};
     const SDL_Color BLACK {0x00, 0x00, 0x00, 0xFF};
-
     uint32_t vram[32][64];
+
+    std::unordered_map<uint8_t, SDL_Scancode> key_map {
+        {0x1, SDL_SCANCODE_1}, {0x2, SDL_SCANCODE_2}, {0x3, SDL_SCANCODE_3}, {0xC, SDL_SCANCODE_4},
+        {0x4, SDL_SCANCODE_Q}, {0x5, SDL_SCANCODE_W}, {0x6, SDL_SCANCODE_E}, {0xD, SDL_SCANCODE_R},
+        {0x7, SDL_SCANCODE_A}, {0x8, SDL_SCANCODE_S}, {0x9, SDL_SCANCODE_D}, {0xE, SDL_SCANCODE_F},
+        {0xA, SDL_SCANCODE_Z}, {0x0, SDL_SCANCODE_X}, {0xB, SDL_SCANCODE_C}, {0xF, SDL_SCANCODE_V},
+    };
 
     void render() {
         SDL_RenderPresent(renderer);
@@ -23,11 +30,12 @@ class Display {
         for(size_t y = 0; y < height; ++y) {
             for(size_t x = 0; x < 8; ++x) {
                 uint32_t new_value = 0xFFFFFF00 * get_bit(pixel_data[y], 7 - x);
-                new_value |= vram[y_pos + y][x_pos + x];
+                new_value ^= vram[y_pos + y][x_pos + x];
+                vram[y_pos + y][x_pos + x] = new_value;
                 color_data[y*8 + x] = new_value;
 
                 // Collision happened if this bit's color data was set to 0
-                changes += new_value == 0xFF;
+                changes += (new_value == 0xFF);
             }
         }
 
@@ -75,6 +83,12 @@ class Display {
             }
         }
         return 0;
+    }
+
+    bool get_key(const uint8_t& key) {
+        const uint8_t* keyboard_state = SDL_GetKeyboardState(nullptr);
+        const auto& scancode = key_map.at(key);
+        return keyboard_state[scancode] == 1;
     }
 
     bool draw_sprite(const uint8_t& height, const uint8_t* pixel_data, const uint8_t& x, const uint8_t& y) {

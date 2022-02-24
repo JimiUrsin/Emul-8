@@ -28,8 +28,8 @@ struct CPU {
     std::stack<uint16_t> stack;
     uint8_t delay_timer = 0;
     uint8_t sound_timer = 0;
-    uint8_t registers[16];
-    const uint16_t IPS = 60;
+    uint8_t registers[16] = {};
+    const uint16_t IPS = 600;
 };
 
 class Chip8 {
@@ -143,6 +143,19 @@ class Chip8 {
                 }
             } break;
 
+            case 5: {
+                const size_t r1 = (instruction & 0x0F00) >> 8;
+                const size_t r2 = (instruction & 0x00F0) >> 4;
+
+                if (cpu.registers[r1] == cpu.registers[r2]) {
+                    std::cout << "V" << r1 << " had the same value as V" << r2 << ", skipping an instruction\n";
+                    cpu.pc += 2;
+                } else {
+                    std::cout << "V" << r1 << " and V" << r2 << " were different, not skipping\n";
+                }
+            } break;
+
+
             case 6: {
                 const uint16_t reg = (instruction & 0x0F00) >> 8;
                 const uint8_t value = instruction & 0x00FF;
@@ -157,6 +170,68 @@ class Chip8 {
                 cpu.registers[reg] += value;
             } break;
 
+            case 8: {
+                const uint8_t r1 = (instruction & 0x0F00) >> 8;
+                const uint8_t r2 = (instruction & 0x00F0) >> 4;
+
+                switch(instruction & 0x000F) {
+                    case 0: {
+                        std::cout << "Setting V" << (int) r1 << " to the value of V" << (int) r2 << "\n";
+                        cpu.registers[r1] = cpu.registers[r2];
+                    } break;
+                    case 1: {
+                        std::cout << "ORing V" << (int) r1 << " and V" << (int) r2 << "\n";
+                        cpu.registers[r1] |= cpu.registers[r2];
+                    } break;
+                    case 2: {
+                        std::cout << "ANDing V" << (int) r1 << " and V" << (int) r2 << "\n";
+                        cpu.registers[r1] &= cpu.registers[r2];
+                    } break;
+                    case 3: {
+                        std::cout << "XORing V" << (int) r1 << " and V" << (int) r2 << "\n";
+                        cpu.registers[r1] ^= cpu.registers[r2];
+                    } break;
+                    case 4: {
+                        std::cout << "Summing V" << (int) r1 << " and V" << (int) r2 << "\n";
+                        uint16_t sum = cpu.registers[r1] + cpu.registers[r2];
+                        cpu.registers[0xF] = sum > 0xFF;
+                        cpu.registers[r1] = sum & 0xFF;
+                    } break;
+                    case 5: {
+                        std::cout << "Subtracting V" << (int) r1 << " from V" << (int) r2 << "\n";
+                        cpu.registers[0xF] = cpu.registers[r1] > cpu.registers[r2];
+                        cpu.registers[r1] -= cpu.registers[r2];
+                    } break;
+                    case 6: {
+                        std::cout << "Shifting V" << (int) r1 << " to the right\n";
+                        cpu.registers[0xF] = (cpu.registers[r1] & 1) == 1;
+                        cpu.registers[r1] >>= 1;
+                    } break;
+                    case 7: {
+                        std::cout << "Subtracting V" << (int) r2 << " from V" << (int) r1 << "\n";
+                        cpu.registers[0xF] = cpu.registers[r1] < cpu.registers[r2];
+                        cpu.registers[r1] = cpu.registers[r2] - cpu.registers[r1];
+                    } break;
+                    case 0xE: {
+                        std::cout << "Shifting V" << (int) r1 << " to the left\n";
+                        cpu.registers[0xF] = (cpu.registers[r1] & 0x8000) == 0x8000;
+                        cpu.registers[r1] <<= 1;
+                    } break;
+                }
+            } break;
+
+            case 9: {
+                const size_t r1 = (instruction & 0x0F00) >> 8;
+                const size_t r2 = (instruction & 0x00F0) >> 4;
+
+                if (cpu.registers[r1] != cpu.registers[r2]) {
+                    std::cout << "V" << r1 << " and V" << r2 << " were different, skipping an instruction\n";
+                    cpu.pc += 2;
+                } else {
+                    std::cout << "V" << r1 << " had the same value as V" << r2 << ", not skipping\n";
+                }
+            } break;
+
             case 0xA: {
                 const uint16_t value = instruction & 0x0FFF;
                 std::cout << "Setting index register to " << value << "\n";
@@ -168,6 +243,7 @@ class Chip8 {
                 const uint8_t kk = instruction & 0x00FF;
 
                 cpu.registers[reg] = (rand() % 256) & kk;
+                std::cout << "Setting V" << reg << " to a random value\n";
             } break;
 
             case 0xD: {
@@ -182,6 +258,27 @@ class Chip8 {
                 const bool collision = display.draw_sprite(height, &cpu.ram[cpu.i], x, y);
                 if (collision)
                     cpu.registers[0xF] = 1;
+            } break;
+
+            case 0xE: {
+                const uint16_t key = (instruction & 0x0F00) >> 8;
+                bool pressed = display.get_key(key);
+
+                if ((instruction & 0x00FF) == 0x9E) {
+                    if (pressed) {
+                        cpu.pc += 2;
+                        std::cout << "Key " << key << " was pressed, skipping an instruction\n";
+                    } else {
+                        std::cout << "Key " << key << " was not pressed, not skipping\n";
+                    }
+                } else if ((instruction & 0x00FF) == 0xA1) {
+                    if (!pressed) {
+                        cpu.pc += 2;
+                        std::cout << "Key " << key << " was not pressed, skipping an instruction\n";
+                    } else {
+                        std::cout << "Key " << key << " was pressed, not skipping\n";
+                    }
+                }
             } break;
 
             case 0xF: {
@@ -200,6 +297,11 @@ class Chip8 {
                         cpu.delay_timer = cpu.registers[reg];
                     } break;
 
+                    case 0x18: {
+                        std::cout << "Setting the sound timer to the value of V" << reg << "\n";
+                        cpu.sound_timer = cpu.registers[reg];
+                    } break;
+
                     case 0x1E: {
                         std::cout << "Adding the value of V" << reg << " to I\n";
                         cpu.i += cpu.registers[reg];
@@ -216,6 +318,13 @@ class Chip8 {
                         cpu.ram[cpu.i + 2] = cpu.registers[reg] % 10;
 
                         std::cout << "Writing the decimal representation of V" << reg << " to " << cpu.i << "\n";
+                    } break;
+
+                    case 0x55: {
+                        std::cout << "Writing registers to memory up to V" << reg << "\n";
+                        for (size_t n = 0; n <= reg; ++n) {
+                            cpu.ram[cpu.i + n] = cpu.registers[n];
+                        }
                     } break;
 
                     case 0x65: {
