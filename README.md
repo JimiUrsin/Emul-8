@@ -4,13 +4,13 @@ A CHIP-8 emulator (/interpreter) created with SDL in C++.
 This program was built to help me learn CMake, SDL, and Google Testing
 
 ## Current features
-At this point the program can run the IBM Logo program. Drawing on the screen works but has not been fully implemented yet (no collision, no XORing pixels yet).
+Almost all instructions have been implemented, and everything is mostly working
 
 ## User instructions
 ### Windows
 - Download the latest Emul-8.exe from releases
 - Make sure 32-bit SDL2.dll exists in the same folder as the .exe (SDL2.dll be found [here](https://www.libsdl.org/download-2.0.php) under "Runtime Binaries")
-- Run the program from the command line, with a Chip-8 binary file's name as an argument
+- Run the program from the command line, with a Chip-8 binary file's name as an argument (you can also give a filename at runtime)
 - When you're done, close the window and the program will exit
 
 ### Linux
