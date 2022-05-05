@@ -174,7 +174,7 @@ void Chip8::execute(const uint16_t& instruction) {
                 } break;
                 case 0xE: {
                     std::cout << "Shifting V" << (int) r1 << " to the left\n";
-                    cpu.registers[0xF] = (cpu.registers[r1] & 0x8000) == 0x8000;
+                    cpu.registers[0xF] = (cpu.registers[r1] & 0b1000'0000) != 0;
                     cpu.registers[r1] <<= 1;
                 } break;
             }

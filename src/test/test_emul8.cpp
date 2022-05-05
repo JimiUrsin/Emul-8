@@ -155,10 +155,19 @@ TEST_F(InstructionTest, TestRegisterSUBNBorrow) {
 }
 
 TEST_F(InstructionTest, TestRegisterSHL) {
-    GTEST_SKIP_("Not implemented yet");
+    chip8.cpu.registers[5] = 14;
+    chip8.execute(0x850E);
+    ASSERT_EQ(chip8.cpu.registers[5], 28) << "SHL gave out an incorrect result";
 }
 
-TEST_F(InstructionTest, TestRegisterSNE) {
+TEST_F(InstructionTest, TestRegisterSHLSetsCarry) {
+    chip8.cpu.registers[0xC] = 0b1000'0000;
+    chip8.execute(0x8C0E);
+    ASSERT_EQ(chip8.cpu.registers[0xC], 0);
+    ASSERT_EQ(chip8.cpu.registers[0xF], 1) << "SHL did not set carry flag on overflow";
+}
+
+TEST_F(InstructionTest, TestRegisterSNESkipsIfNotEqual) {
     GTEST_SKIP_("Not implemented yet");
 }
 
